@@ -1,0 +1,23 @@
+body {
+    margin: 0;
+    background-color:beige 
+}
+
+main {
+    margin-bottom: 40px;
+    padding: 10px;
+}
+
+header {
+    margin-bottom: 30px;
+    padding: 20px;
+    background-color: black;
+    color: lightgreen;
+}
+
+footer {
+    margin-bottom: 30px;
+    padding: 20px;
+    background-color: black;
+    color: lightgreen;
+}
