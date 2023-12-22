@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Login</h2>
+<form id="loginForm">
+    <input type="text" id="login" placeholder="Login">
+    <input type="password" id="password" placeholder="Password">
+    <button type="submit">Логин</button>
+</form>
+<script src="{{ url_for('static', filename='js/utils.js') }}"></script>
+<script src="{{ url_for('static', filename='js/login.js') }}"></script>
+{% endblock %}

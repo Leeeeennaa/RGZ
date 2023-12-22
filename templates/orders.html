@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <h2>Управление заказами</h2>
+    <div id="ordersList"></div>
+</div>
+{% for order in orders %}
+<div>
+    <h2>
+        Заказ № {{order.id}}
+    </h2>
+</div>
+{%endfor%}
+<script src="{{ url_for('static', filename='js/utils.js') }}"></script>
+<script src="{{ url_for('static', filename='js/orders.js') }}"></script>
+{% endblock %}

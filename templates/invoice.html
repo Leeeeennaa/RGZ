@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div>
+    <h1>Управление Накладной</h1>
+</div>
+
+<!-- Раздел для добавления нового товара в накладную -->
+<div>
+    <h2>Добавить товар в накладную:</h2>
+    <form id="addProductForm">
+        Название товара: <input type="text" id="productName" required>
+        Количество: <input type="number" id="productQuantity" required>
+        <button type="submit">Завершить</button>
+    </form>
+</div>
+
+<!-- Раздел для отображения списка товаров -->
+<div>
+    <h2>Список товаров в накладной:</h2>
+    <div id="invoiceList">Товары будут отображены здесь...</div>
+</div>
+
+<script>
+    var currentUserId = "{{ user_id }}";
+</script>
+<script src="{{ url_for('static', filename='js/utils.js') }}"></script>
+<script src="{{ url_for('static', filename='js/invoice.js') }}"></script>
+
+{% endblock %}

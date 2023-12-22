@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div>
+    <h2>Добавить или Обновить Продукт</h2>
+    <input type="text" id="newProductName" placeholder="Название Продукта">
+    <input type="number" id="newProductQuantity" placeholder="Количество">
+    <button onclick="addOrUpdateProduct(document.getElementById('newProductName').value, document.getElementById('newProductQuantity').value)">Подтвердить</button>
+</div>
+
+<div>
+    <h2>Продукты</h2>
+    <div id="productsList">Чтобы загрузить ещё продуктов нажмите кнопку ниже</div>
+</div>
+
+<button id="moreButton" onclick="loadMoreProducts()" style="display:none;">Загрузить Еще Продукты</button>
+
+<script src="{{ url_for('static', filename='js/utils.js') }}"></script>
+<script src="{{ url_for('static', filename='js/products.js') }}"></script>
+{% endblock %}

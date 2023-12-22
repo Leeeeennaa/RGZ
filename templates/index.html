@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{% block lab %}Домашняя страница{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>База бытовой техники</h2>
+    {% if 'user_id' in session %}
+        {% if user_role == 'admin' %}
+            <nav>
+                <ul>
+                    <li><a href="{{ url_for('admin_panel') }}">Регистрация кладовщиков</a></li>
+                </ul>
+            </nav>
+            <p>Добро пожаловать в административную панель. Здесь вы можете регистрировать новых кладовщиков.</p>
+        {% else %}
+            <nav>
+                <ul>
+                    <li><a href="{{ url_for('product_page') }}">Управление продуктами</a></li>
+                    <li><a href="{{ url_for('order_page') }}">Посмотреть заказы</a></li>
+                </ul>
+            </nav>
+            <p>Добро пожаловать, кладовщик. Используйте ссылки выше для управления товарами и заказами.</p>
+        {% endif %}
+        <div class="logout">
+            <a href="{{ url_for('logout') }}">Выйти</a>
+        </div>
+    {% else %}
+        <p>Пожалуйста, <a href="{{ url_for('login_page') }}">войдите</a> для доступа к функционалу.</p>
+    {% endif %}
+</div>
+
+<style>
+    .container {
+        text-align: center;
+        margin-top: 50px;
+    }
+    nav ul {
+        list-style-type: none;
+        padding: 0;
+    }
+    nav ul li {
+        display: inline;
+        margin-right: 20px;
+    }
+    .logout {
+        margin-top: 20px;
+    }
+</style>
+{% endblock %}
