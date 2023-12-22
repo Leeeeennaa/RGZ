@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тарасова Елена. {% block lab %}{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body>
+    <header>
+        WEB-программирование, часть 2. Ргз.
+    </header>
+    <nav>
+        <a href="{{ url_for('index') }}">Главная</a>
+        <a href="{{ url_for('product_page') }}">Продукты</a> 
+        <a href="{{ url_for('order_page') }}">Заказы</a>
+        <a href="{{ url_for('invoice_page') }}">Накладная</a>
+    </nav>
+    
+    <main>
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    <footer>
+        &copy; Тарасова Елена, ФБИ-12, курс 3, 2023
+    </footer>
+</body>
+</html>
