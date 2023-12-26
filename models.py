@@ -13,11 +13,12 @@ class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     quantity = db.Column(db.Integer, nullable=False)
+    reserved = db.Column(db.Integer, default=0, nullable=False)
+
 
 class Order(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    # Оплаченный заказ или нет
     status = db.Column(db.String(50), default='Не оплачен') 
     products = db.relationship('Product', secondary='order_products', backref=db.backref('orders', lazy='dynamic'))
 

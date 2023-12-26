@@ -1,57 +1,65 @@
-// // Функция для загрузки товаров в накладной
-// function loadInvoiceItems() {
-//     jsonRpcRequest('/api', 'App.getInvoiceItems', {user_id: parseInt(currentUserId)}, function(response) {
-//         const invoiceList = document.getElementById('invoiceList');
-//         if (response && Array.isArray(response.items)) {
-//             invoiceList.innerHTML = response.items.map(item => 
-//                 `<div>${item.productName} - Quantity: ${item.quantity}
-//                  <button onclick="removeProductFromInvoice(${item.id})">Удалить</button>
-//                  </div>`
-//             ).join('');
-//         } else {
-//             invoiceList.innerHTML = 'Не удалось загрузить товары.';
-//             console.error('Ошибка загрузки техники в накладной:', response);
-//         }
-//     });
-// }
+function jsonRpcRequest(url, method, params, callback, debug = false) {
+    const requestPayload = {
+        jsonrpc: '2.0',
+        method: method,
+        params: params,
+        id: new Date().getTime()
+    };
 
-// Функция для отправки данных о новом товаре
-function addProductToInvoice(event) {
-    event.preventDefault();
-    const productName = document.getElementById('productName').value;
-    const productQuantity = document.getElementById('productQuantity').value;
+    if (debug) {
+        console.log("Отправка jsonrpc:", requestPayload);
+    }
 
-    jsonRpcRequest('/api', 'App.addToInvoice', {
-        user_id: currentUserId,
-        product_name: productName,
-        quantity: productQuantity
-    }, function(response) {
-        if (response && response.status === 'success') {
-            alert('Товар добавлен в накладную успешно!');
-            loadInvoiceItems();  // Обновляем список товаров в накладной
+    fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestPayload)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert(`Ошибка: ${data.error.message}`);
+            console.error('Ошибка:', {url, requestPayload, response: data.error});
         } else {
-            alert('Не удалось добавить товар в накладную.');
-            console.error('Не удалось добавить товар в накладную: ', response);
+            callback(data.result);
+        }
+    })
+    .catch(error => {
+        alert('Ошибка: ' + error);
+        console.error('Ошибка:', error);
+    });
+}
+
+function finalizeInvoice() {
+    jsonRpcRequest('/api', 'App.finalizeInvoice', {user_id: userId}, function(response) {
+        console.log(response);
+        if (response && response.status === 'success') {
+            alert("Накладная завершена, заказ создан.");
         }
     });
 }
 
-// Функция для удаления товара из накладной
-function removeProductFromInvoice(invoiceItemId) {
-    jsonRpcRequest('/api', 'App.removeFromInvoice', {invoice_item_id: invoiceItemId}, function(response) {
-        if (response && response.status === 'success') {
-            alert('Товар удален из накладной успешно!');
-            loadInvoiceItems();  // Обновляем список товаров в накладной
-        } else {
-            alert('Не удалось удалить товар из накладной.');
-            console.error('Не удалось удалить товар из накладной: ', response);
-        }
+function renderInvoiceItem(item) {
+    return `<div class="invoice-item">
+                <span>${item.productName} - Количество: ${item.quantity}</span>
+            </div>`;
+}
+
+function loadInvoiceItems() {
+    jsonRpcRequest('/api', 'App.getInvoiceItems', {user_id: userId}, function(response) {
+        const itemsContainer = document.getElementById('invoiceItems');
+        
+        itemsContainer.innerHTML = '';
+
+        if (response && response.status === 'success' && response.items) {
+            response.items.forEach(item => {
+                const itemHtml = `<div class="invoice-item">
+                                    <span>${item.productName} - Количество: ${item.quantity}</span>
+                                  </div>`;
+                itemsContainer.innerHTML += itemHtml;
+            });
+        } 
     });
 }
 
-
-// Инициализация при загрузке страницы
-document.addEventListener('DOMContentLoaded', function() {
-    loadInvoiceItems();  // Загружаем товары в накладной при загрузке страницы
-    document.getElementById('addProductForm').addEventListener('submit', addProductToInvoice);
-});
+window.onload = loadInvoiceItems;

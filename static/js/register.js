@@ -1,3 +1,52 @@
+function jsonRpcRequest(url, method, params, callback, debug = false) {
+    const requestPayload = {
+        jsonrpc: '2.0',
+        method: method,
+        params: params,
+        id: new Date().getTime()
+    };
+
+    if (debug) {
+        console.log("Отправка jsonrpc:", requestPayload);
+    }
+
+    fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestPayload)
+    })
+    .then(response => {
+        if (!response.ok) {
+            const error = new Error(`HTTP error, status = ${response.status}`);
+            console.error('Ошибка:', error);
+            if (error.stack) {
+                console.error('Ошибка:', error.stack);
+            }
+            throw error;
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.error) {
+            const error = new Error(data.error.message || "Ошибка");
+            console.error('Ошибка:', error);
+            console.error('Ошибка :', {url, requestPayload, response: data.error});
+            if (error.stack) {
+                console.error('Ошибка :', error.stack);
+            }
+            throw error;
+        }
+        callback(data.result);
+    })
+    .catch(error => {
+        console.error('Ошибка :', error);
+        if (error.stack) {
+            console.error('Ошибка :', error.stack);
+        }
+    });
+}
+
+// Event listener for register form submission
 document.getElementById('registerForm').addEventListener('submit', function(e) {
     e.preventDefault();
     const name = document.getElementById('name').value;
@@ -7,22 +56,18 @@ document.getElementById('registerForm').addEventListener('submit', function(e) {
 });
 
 function registerUser(name, login, password) {
-    fetch('/api', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            jsonrpc: '2.0',
-            method: 'App.register',
-            params: { name: name, login: login, password: password },
-            id: 1
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.result.status === 'success') {
-            console.log('Успешная регистрация:', data.result);
+    jsonRpcRequest('/api', 'App.register', {
+        name: name,
+        login: login,
+        password: password
+    }, function(result) {
+        alert(result.message);
+        if (result.status === 'success') {
+            console.log('Успешная регистрация:', result);
+
         } else {
-            alert('Ошибка: ' + data.result.message);
+            console.error('Ошибка :', result);
+            alert('Ошибка: ' + result.message);
         }
-    });
+    }, true);
 }

@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 from flask_jsonrpc import JSONRPC
+from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from models import db, User, Product, Order, Invoice, InvoiceItem
 
@@ -51,26 +52,53 @@ def register(name: str, login: str, password: str) -> dict:
     return {"status": "success", "message": "Кладовщик зарегистрирован"}
 
 @jsonrpc.method('App.addOrUpdateProduct')
-#Добавка продуктов или изменение
 def add_or_update_product(name: str, quantity) -> dict:
-    quantity = int(quantity)
-    product = Product.query.filter_by(name=name).first()
-    if product:
-        product.quantity += quantity  # Увеличить количество, если товар существует
-    else:
-        product = Product(name=name, quantity=quantity)  # Создать новый товар
-        db.session.add(product)
-    db.session.commit()
-    return {"status": "success", "message": "Продукт добавлен или изменён"}
+    try:
+        quantity = int(quantity)
+        product = Product.query.filter_by(name=name).first()
+        
+        if product:
+            # Обновляем количество, но не позволяем ему уйти в минус
+            new_quantity = product.quantity + quantity
+            if new_quantity < 0:
+                new_quantity = 0  # Установите количество в 0, если оно становится отрицательным
 
+            product.quantity = new_quantity
+            
+            # Удаляем продукт, если его количество равно 0
+            if product.quantity == 0:
+                db.session.delete(product)
+        else:
+            # Создаем новый продукт, если количество больше 0
+            if quantity > 0:
+                product = Product(name=name, quantity=quantity)
+                db.session.add(product)
+        
+        db.session.commit()
+        return {"status": "success", "message": "Продукт обновлен или удален при необходимости"}
+    
+    except Exception as e:
+        db.session.rollback()
+        return {"status": "error", "message": str(e)}
 @jsonrpc.method('App.deleteProduct')
 def delete_product(product_id: int) -> dict:
-    product = Product.query.get(product_id)
-    if product:
-        db.session.delete(product)
-        db.session.commit()
-        return {"status": "success", "message": "Продукт удалён"}
-    return {"status": "error", "message": "Продукт не найден"}
+    try:
+        product = Product.query.get(product_id)
+        if product:
+            # Проверка на наличие связанных элементов накладной
+            related_items = InvoiceItem.query.filter_by(product_id=product_id).all()
+            if related_items:
+                # Если есть связанные элементы, сначала их нужно удалить или обработать
+                return {"status": "error", "message": "Продукт связан с элементами накладной и не может быть удален."}
+            else:
+                db.session.delete(product)
+                db.session.commit()
+                return {"status": "success", "message": "Продукт удален"}
+        else:
+            return {"status": "error", "message": "Продукт не найден"}
+    except Exception as e:
+        db.session.rollback()
+        return {"status": "error", "message": str(e)}
 
 @jsonrpc.method('App.getProductsPaginated')
 # Функция отвечает за то чтобы было видно 50 продуктов при переходе на страницу с продуктами
@@ -91,7 +119,6 @@ def get_products_paginated(page: int = 1, per_page: int = 50) -> dict:
             "has_more": paginated_products.has_next
         }
     except Exception as e:
-        # Обработка любых других ошибок, которые могут произойти при пагинации
         return {"status": "error", "message": str(e)}
 
 
@@ -137,34 +164,47 @@ def update_order_status_api(order_id: int, new_status: str) -> dict:
 @jsonrpc.method('App.addToInvoice')
 def add_to_invoice(user_id: int, product_name: str, quantity: int) -> dict:
     try:
+        # Проверка пользователя
         user = User.query.get(user_id)
         if not user:
             return {"status": "error", "message": "Пользователь не найден"}
 
+        # Проверка продукта
         product = Product.query.filter_by(name=product_name).first()
         if not product:
             return {"status": "error", "message": "Продукт не найден"}
 
-        # Проверка, есть ли уже активная накладная у пользователя
+
+        # Проверка наличия товара на складе
+        if quantity <= 0 or quantity > product.quantity:
+            return {"status": "error", "message": "Некорректное количество товара"}
+
+        # Проверка или создание накладной
         invoice = Invoice.query.filter_by(user_id=user_id, finalized=False).first()
         if not invoice:
-            # Если нет, создаем новую
             invoice = Invoice(user_id=user_id, finalized=False)
             db.session.add(invoice)
 
-        # Добавление товара в накладную
-        invoice_item = InvoiceItem(invoice_id=invoice.id, product_id=product.id, quantity=quantity)
-        db.session.add(invoice_item)
+        # Добавление или обновление продукта в накладной
+        invoice_item = InvoiceItem.query.filter_by(invoice_id=invoice.id, product_id=product.id).first()
+        if invoice_item:
+            invoice_item.quantity += quantity
+        else:
+            invoice_item = InvoiceItem(invoice_id=invoice.id, product_id=product.id, quantity=quantity)
+            db.session.add(invoice_item)
 
-        # Обновление количества на складе, если это необходимо
+        # Обновление количества на складе и зарезервированного количества
         product.quantity -= quantity
+        product.reserved += quantity
 
+        # Сохранение изменений
         db.session.commit()
         return {"status": "success", "message": "Товар добавлен в накладную"}
 
     except Exception as e:
         db.session.rollback()
         return {"status": "error", "message": str(e)}
+
 
 @jsonrpc.method('App.adjustProductQuantity')
 def adjust_product_quantity(product_id: int, quantity: int) -> dict:
@@ -176,7 +216,7 @@ def adjust_product_quantity(product_id: int, quantity: int) -> dict:
     return {"status": "error", "message": "Продукт не найден"}
 
 @jsonrpc.method('App.viewOrders')
-def view_orders(user_id:int) -> dict:
+def view_orders() -> dict:
     if not proverka_kladovchik(session.get('user_id')):
         return {"status": "error", "message": "Только кладовщик может смотреть заказы."}
     all_orders = Order.query.all()
@@ -199,7 +239,82 @@ def get_invoice_items(user_id: int) -> dict:
     if invoice:
         items = InvoiceItem.query.filter_by(invoice_id=invoice.id).all()
         return {"status": "success", "items": [{"productName": Product.query.get(item.product_id).name, "quantity": item.quantity} for item in items]}
-    return {"status": "error", "message": "No active invoice found for this user"}
+    return {"status": "error", "message": "Нету активного итема для накладной"}
+
+@jsonrpc.method('App.finalizeInvoice')
+def finalize_invoice(user_id: int) -> dict:
+    try:
+        # Получение накладной пользователя
+        invoice = Invoice.query.filter_by(user_id=user_id, finalized=False).first()
+        if not invoice:
+            return {"status": "error", "message": "Активная накладная не найдена"}
+
+        # Создание нового заказа
+        order = Order(user_id=user_id, status='Не оплачен')
+
+        # Перемещение товаров из накладной в заказ
+        for item in invoice.items:
+            product = Product.query.get(item.product_id)
+
+            # Проверка и установка значения по умолчанию для 'reserved', если оно None
+            if product.reserved is None:
+                product.reserved = 0
+
+            if product and item.quantity <= product.reserved:
+                # Уменьшение количества зарезервированных товаров
+                product.reserved -= item.quantity
+                # Добавление товара в заказ
+                order.products.append(product)
+            else:
+                db.session.rollback()
+                return {"status": "error", "message": f"Недостаточно товара на складе для {product.name}"}
+
+        # Завершение накладной
+        invoice.finalized = True
+   # Сохранение изменений
+        db.session.add(order)
+        db.session.commit()
+
+        return {"status": "success", "message": "Накладная завершена, заказ создан"}
+
+    except Exception as e:
+        db.session.rollback()
+        return {"status": "error", "message": str(e)}
+
+@jsonrpc.method('App.getOrderDetails')
+def get_order_details(order_id: int) -> dict:
+    try:
+        order = Order.query.get(order_id)
+        if not order:
+            return {"status": "error", "message": "Заказ не найден"}
+
+        product_details = []
+
+        # Проходим по всем продуктам в заказе
+        for product in order.products:
+            # Находим все элементы накладной для этого продукта
+            invoice_items = InvoiceItem.query.filter_by(product_id=product.id).all()
+
+            total_quantity = 0
+            # Считаем общее количество продукта из всех накладных
+            for item in invoice_items:
+                total_quantity += item.quantity
+
+            product_details.append({
+                "id": product.id,
+                "name": product.name,
+                "quantity": total_quantity  # Общее количество из накладных
+            })
+
+        return {
+            "status": "success",
+            "order_id": order_id,
+            "products": product_details
+        }
+
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
 
 @app.route('/')
 def index():
@@ -227,8 +342,9 @@ def product_page():
 def order_page():
     if not session.get('user_id') or not proverka_kladovchik(session.get('user_id')):
         return redirect(url_for('login_page'))  
-    orders = Order.query.filter_by(user_id=session.get('user_id')).all()
-    return render_template('orders.html', orders = orders)
+
+    user_id = session.get('user_id')
+    return render_template('orders.html', user_id=user_id)
 
 @app.route('/invoice')
 def invoice_page():
@@ -250,4 +366,4 @@ def logout():
 
 if __name__ == '__main__':
     app.run(debug=True)
-
+    

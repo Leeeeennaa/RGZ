@@ -1,12 +1,25 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<h2>Login</h2>
-<form id="loginForm">
-    <input type="text" id="login" placeholder="Login">
-    <input type="password" id="password" placeholder="Password">
-    <button type="submit">Логин</button>
-</form>
-<script src="{{ url_for('static', filename='js/utils.js') }}"></script>
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-6 offset-md-3">
+            <h2 class="text-center mb-4">Login</h2>
+            <form id="loginForm" onsubmit="loginUser(event)" class="card p-4 shadow">
+                <div class="form-floating mb-3">
+                    <input type="text" class="form-control" id="login" placeholder="Login" required>
+                    <label for="login">Login</label>
+                </div>
+                <div class="form-floating mb-3">
+                    <input type="password" class="form-control" id="password" placeholder="Password" required>
+                    <label for="password">Password</label>
+                </div>
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary">Log In</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 <script src="{{ url_for('static', filename='js/login.js') }}"></script>
 {% endblock %}

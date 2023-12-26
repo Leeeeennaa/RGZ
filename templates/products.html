@@ -2,11 +2,17 @@
 
 {% block content %}
 
+<div class="add-product-form">
+    <h2>Добавить товар в накладную</h2>
+    <input type="text" id="productName" placeholder="Название продукта">
+    <input type="number" id="productQuantity" placeholder="Количество">
+    <button onclick="addProductToInvoice()">Добавить в накладную</button>
+</div>
 <div>
     <h2>Добавить или Обновить Продукт</h2>
     <input type="text" id="newProductName" placeholder="Название Продукта">
     <input type="number" id="newProductQuantity" placeholder="Количество">
-    <button onclick="addOrUpdateProduct(document.getElementById('newProductName').value, document.getElementById('newProductQuantity').value)">Подтвердить</button>
+    <button onclick="addOrUpdateProduct()">Подтвердить</button>
 </div>
 
 <div>
@@ -16,6 +22,8 @@
 
 <button id="moreButton" onclick="loadMoreProducts()" style="display:none;">Загрузить Еще Продукты</button>
 
-<script src="{{ url_for('static', filename='js/utils.js') }}"></script>
+<!-- Добавлен скрытый input для user ID -->
+<input type="hidden" id="userId" value="{{ user_id|tojson }}">
+
 <script src="{{ url_for('static', filename='js/products.js') }}"></script>
 {% endblock %}
